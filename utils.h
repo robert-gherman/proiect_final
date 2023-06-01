@@ -247,7 +247,7 @@ size_t myWrite(char *path, char *buffer, size_t size)
     }
     // scriem in fisier in bucati
     ssize_t bytesWritten, totalWritten = 0;
-    while ((bytesWritten = write(fd, buffer + totalWritten, BUFSIZE)) < size - totalWritten)
+    while ((bytesWritten = write(fd, buffer + totalWritten, BUFSIZE )) < size - totalWritten)
     {
         totalWritten += bytesWritten;
     }
