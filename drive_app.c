@@ -185,8 +185,7 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
         }
         else if (pid1_A == 0)
         { // copilul
-            // client(message);
-            message = "";
+            client(message); 
 
             // Open your main application window here
             createMainApplicationWindow();
@@ -249,7 +248,9 @@ void registerButtonClicked(GtkWidget *button, gpointer data)
     }
 
     saveUser(username, email, password);
-
+    char *user_drive = "/drive"; 
+    strcpy(user_drive, username);
+    mkdir(user_drive, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     gtk_label_set_text(GTK_LABEL(statusLabel), "Registration successful!");
 }
 

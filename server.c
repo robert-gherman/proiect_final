@@ -7,7 +7,7 @@
 
 #define MAX_CLIENTS 2
 #define BUFFER_SIZE 1024
-#define PORT 8081
+#define PORT 8080
 
 // Structure to hold client information
 typedef struct {

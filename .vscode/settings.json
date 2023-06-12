@@ -39,6 +39,8 @@
     "string.h": "c",
     "utils.h": "c",
     "unistd.h": "c",
-    "client.h": "c"
+    "client.h": "c",
+    "gtk.h": "c",
+    "stdio.h": "c"
   }
 }
