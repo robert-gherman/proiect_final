@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <sys/types.h>
 
 #include "utils.h"
+#include "client.h"
 
 GtkWidget *grid;
 GtkWidget *usernameEntry;
@@ -12,6 +14,8 @@ GtkWidget *passwordEntry;
 GtkWidget *loginButton;
 GtkWidget *statusLabel;
 GtkWidget *listView; // New list view widget
+
+char *message;
 
 int getNumberOfUsers()
 {
@@ -96,37 +100,37 @@ void selectionChanged(GtkTreeSelection *selection, gpointer data)
         gtk_tree_model_get(model, &iter, 0, &item, -1);
         g_print("Selected File: %s\n", item);
 
-        // declaram structurile
-        inFile_t inFile;
-        outFile_t outFile;
+        // // declaram structurile
+        // inFile_t inFile;
+        // outFile_t outFile;
 
-        // cerem utilizatorului sa introduca calea catre fisier si cat sa citeasca din el
-        printf("Enter input file path: ");
-        inFile.filePath = malloc(256);
-        strcpy(inFile.filePath, "./drive/");
-        strcat(inFile.filePath, item);
-        printf("%s\n",inFile.filePath);
-        // scanf("%s", inFile.filePath);
-        inFile.size = getSizeOfFile(inFile.filePath);
-        // printf("Enter how much do you want to read: ");
-        // scanf("%zu", &inFile.size);
-        pthread_t thread1;
-        pthread_create(&thread1, NULL, (void *)&inThread, &inFile);
-    
-        // in fisieul de output se scrie ce am citit din fisierul de input
-        printf("Enter output file path: ");
-        outFile.filePath = malloc(256);
-        outFile.filePath = item;
-        printf("%s\n",outFile.filePath);
-        // scanf("%s", outFile.filePath);
-        outFile.buffer = inFile.buffer;
-        outFile.size = inFile.size;
-        // printf("Enter how much do you want to write: ");
-        // scanf("%zu", &outFile.size);
-        pthread_t thread2;
-        pthread_create(&thread2, NULL, (void *)&outThread, &outFile);
-        pthread_join(thread1, NULL);
-        pthread_join(thread2, NULL);
+        // // cerem utilizatorului sa introduca calea catre fisier si cat sa citeasca din el
+        // printf("Enter input file path: ");
+        // inFile.filePath = malloc(256);
+        // strcpy(inFile.filePath, "./drive/");
+        // strcat(inFile.filePath, item);
+        // printf("%s\n",inFile.filePath);
+        // // scanf("%s", inFile.filePath);
+        // inFile.size = getSizeOfFile(inFile.filePath);
+        // // printf("Enter how much do you want to read: ");
+        // // scanf("%zu", &inFile.size);
+        // pthread_t thread1;
+        // pthread_create(&thread1, NULL, (void *)&inThread, &inFile);
+
+        // // in fisieul de output se scrie ce am citit din fisierul de input
+        // printf("Enter output file path: ");
+        // outFile.filePath = malloc(256);
+        // outFile.filePath = item;
+        // printf("%s\n",outFile.filePath);
+        // // scanf("%s", outFile.filePath);
+        // outFile.buffer = inFile.buffer;
+        // outFile.size = inFile.size;
+        // // printf("Enter how much do you want to write: ");
+        // // scanf("%zu", &outFile.size);
+        // pthread_t thread2;
+        // pthread_create(&thread2, NULL, (void *)&outThread, &outFile);
+        // pthread_join(thread1, NULL);
+        // pthread_join(thread2, NULL);
 
         g_free(item);
     }
@@ -172,35 +176,51 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
     if (verifyCredentials(username, password))
     {
         gtk_label_set_text(GTK_LABEL(statusLabel), "Login successful!");
-
-        // Open your main application window here
-        createMainApplicationWindow();
-
-        struct dirent *entry;
-
-        DIR *dir = opendir("./drive");
-        if (dir == NULL)
+        message = username;
+        pid_t pid1_A = fork(); // cream primul proces
+        if (pid1_A < 0)
         {
-            perror("opendir");
-            return;
+            perror("Eroare la crearea procesului A");
+            exit(1);
         }
+        else if (pid1_A == 0)
+        { // copilul
+            // client(message);
+            message = "";
 
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (entry->d_type == DT_REG)
-            { // Check if it's a regular file
-                printf("%s\n", entry->d_name);
-                addToList(entry->d_name);
+            // Open your main application window here
+            createMainApplicationWindow();
+
+            struct dirent *entry;
+
+            DIR *dir = opendir("./drive");
+            if (dir == NULL)
+            {
+                perror("opendir");
+                return;
             }
+
+            while ((entry = readdir(dir)) != NULL)
+            {
+                if (entry->d_type == DT_REG)
+                { // Check if it's a regular file
+                    printf("%s\n", entry->d_name);
+                    addToList(entry->d_name);
+                }
+            }
+
+            closedir(dir);
+
+            // Get the selection object for the list view
+            GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(listView));
+
+            // Connect the selection changed signal to the callback function
+            g_signal_connect(G_OBJECT(selection), "changed", G_CALLBACK(selectionChanged), NULL);
         }
-
-        closedir(dir);
-
-        // Get the selection object for the list view
-        GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(listView));
-
-        // Connect the selection changed signal to the callback function
-        g_signal_connect(G_OBJECT(selection), "changed", G_CALLBACK(selectionChanged), NULL);
+        else{
+            wait(NULL);
+            exit(0);
+        }
     }
     else
     {
@@ -311,7 +331,7 @@ int main(int argc, char *argv[])
     gtk_widget_show_all(window);
 
     g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-
+    wait(NULL);
     gtk_main();
 
     return 0;
