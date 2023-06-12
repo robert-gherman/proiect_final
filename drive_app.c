@@ -4,7 +4,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/types.h>
-
+#include <jansson.h>
 #include "utils.h"
 #include "client.h"
 
@@ -17,68 +17,83 @@ GtkWidget *listView; // New list view widget
 
 char *message;
 
-int getNumberOfUsers()
+json_t *load_json_from_file(const char *filename)
 {
-    FILE *file = fopen("credentials.json", "r");
-    if (file == NULL)
-        return 0;
-
-    char c;
-    int count = 0;
-    while ((c = fgetc(file)) != EOF)
+    json_error_t error;
+    json_t *root = json_load_file(filename, 0, &error);
+    if (!root)
     {
-        if (c == '{')
-            count++;
+        fprintf(stderr, "Error loading JSON file: %s\n", error.text);
     }
-
-    fclose(file);
-    return count;
+    return root;
 }
 
-void saveUser(const char username[128], const char email[128], const char password[128])
+size_t get_json_array_length(json_t *root)
 {
-    FILE *file = fopen("credentials.json", "a");
-    if (file == NULL)
+    if (!json_is_array(root))
     {
-        printf("Error opening file for writing.\n");
+        fprintf(stderr, "JSON root is not an array\n");
+        return 0;
+    }
+
+    return json_array_size(root);
+}
+
+void add_json_object(json_t *root, json_t *new_object)
+{
+    if (!json_is_array(root))
+    {
+        fprintf(stderr, "JSON root is not an array\n");
         return;
     }
 
-    int numberOfUsers = getNumberOfUsers();
-
-    if (numberOfUsers > 0)
-        fprintf(file, ",");
-
-    fprintf(file, "{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\"}", username, email, password);
-
-    fclose(file);
+    json_array_append(root, new_object);
 }
 
-int verifyCredentials(const char username[128], const char password[128])
+int verify_credentials(json_t *root, const char *username, const char *password)
 {
-    FILE *file = fopen("credentials.json", "r");
-    if (file == NULL)
+    if (!json_is_array(root))
     {
-        printf("Error opening file for reading.\n");
+        fprintf(stderr, "JSON root is not an array\n");
         return 0;
     }
 
-    char line[256];
-    char searchString[256];
-    sprintf(searchString, "\"username\": \"%s\", \"password\": \"%s\"", username, password);
-
-    while (fgets(line, sizeof(line), file))
+    size_t i;
+    json_t *value;
+    json_array_foreach(root, i, value)
     {
-        printf("%s\n", searchString);
-        printf("%s\n", line);
-        if (strstr(line, searchString))
+        json_t *username_value = json_object_get(value, "username");
+        json_t *password_value = json_object_get(value, "password");
+
+        if (json_is_string(username_value) && json_is_string(password_value))
         {
-            fclose(file);
-            return 1;
+            const char *stored_username = json_string_value(username_value);
+            const char *stored_password = json_string_value(password_value);
+
+            if (strcmp(stored_username, username) == 0 && strcmp(stored_password, password) == 0)
+            {
+                return 1; // Credentials match
+            }
         }
     }
 
+    return 0; // Credentials not found
+}
+
+// Write JSON to file
+int write_json_to_file(const char *filename, json_t *root)
+{
+    FILE *file = fopen(filename, "w");
+    if (!file)
+    {
+        fprintf(stderr, "Error opening file for writing\n");
+        return 0;
+    }
+
+    int success = json_dumpf(root, file, JSON_INDENT(4));
     fclose(file);
+
+    return success == 0;
 }
 
 void addToList(const char *item)
@@ -96,41 +111,21 @@ void selectionChanged(GtkTreeSelection *selection, gpointer data)
     GtkTreeModel *model;
     if (gtk_tree_selection_get_selected(selection, &model, &iter))
     {
+
         gchar *item;
         gtk_tree_model_get(model, &iter, 0, &item, -1);
         g_print("Selected File: %s\n", item);
 
-        // // declaram structurile
-        // inFile_t inFile;
-        // outFile_t outFile;
+        int sock = connect_to_server();
+        if (sock == -1)
+        {
+            printf("Failed to connect to the server\n");
+            exit(EXIT_FAILURE);
+        }
 
-        // // cerem utilizatorului sa introduca calea catre fisier si cat sa citeasca din el
-        // printf("Enter input file path: ");
-        // inFile.filePath = malloc(256);
-        // strcpy(inFile.filePath, "./drive/");
-        // strcat(inFile.filePath, item);
-        // printf("%s\n",inFile.filePath);
-        // // scanf("%s", inFile.filePath);
-        // inFile.size = getSizeOfFile(inFile.filePath);
-        // // printf("Enter how much do you want to read: ");
-        // // scanf("%zu", &inFile.size);
-        // pthread_t thread1;
-        // pthread_create(&thread1, NULL, (void *)&inThread, &inFile);
+        send_message(sock, item);
 
-        // // in fisieul de output se scrie ce am citit din fisierul de input
-        // printf("Enter output file path: ");
-        // outFile.filePath = malloc(256);
-        // outFile.filePath = item;
-        // printf("%s\n",outFile.filePath);
-        // // scanf("%s", outFile.filePath);
-        // outFile.buffer = inFile.buffer;
-        // outFile.size = inFile.size;
-        // // printf("Enter how much do you want to write: ");
-        // // scanf("%zu", &outFile.size);
-        // pthread_t thread2;
-        // pthread_create(&thread2, NULL, (void *)&outThread, &outFile);
-        // pthread_join(thread1, NULL);
-        // pthread_join(thread2, NULL);
+        receive_message(sock);
 
         g_free(item);
     }
@@ -173,10 +168,17 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
     printf("Username: %s\n", username);
     printf("Password: %s\n", password);
 
-    if (verifyCredentials(username, password))
+    json_t *root = load_json_from_file("credentials.json");
+    if (!root)
+    {
+        // Handle the error
+        exit(EXIT_FAILURE);
+    }
+    size_t array_length = get_json_array_length(root);
+
+    if (verify_credentials(root, username, password) == 1)
     {
         gtk_label_set_text(GTK_LABEL(statusLabel), "Login successful!");
-        message = username;
         pid_t pid1_A = fork(); // cream primul proces
         if (pid1_A < 0)
         {
@@ -185,14 +187,24 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
         }
         else if (pid1_A == 0)
         { // copilul
-            client(message); 
+            int sock = connect_to_server();
+            if (sock == -1)
+            {
+                printf("Failed to connect to the server\n");
+                exit(EXIT_FAILURE);
+            }
 
+            send_message(sock, username);
+
+            receive_message(sock);
             // Open your main application window here
             createMainApplicationWindow();
 
             struct dirent *entry;
 
-            DIR *dir = opendir("./drive");
+            char *drive;
+            sprintf(drive, "%s/%s", "./drive", username);
+            DIR *dir = opendir(drive);
             if (dir == NULL)
             {
                 perror("opendir");
@@ -216,7 +228,8 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
             // Connect the selection changed signal to the callback function
             g_signal_connect(G_OBJECT(selection), "changed", G_CALLBACK(selectionChanged), NULL);
         }
-        else{
+        else
+        {
             wait(NULL);
             exit(0);
         }
@@ -247,10 +260,29 @@ void registerButtonClicked(GtkWidget *button, gpointer data)
         return;
     }
 
-    saveUser(username, email, password);
-    char *user_drive = "/drive"; 
-    strcpy(user_drive, username);
-    mkdir(user_drive, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    json_t *root = load_json_from_file("credentials.json");
+    if (!root)
+    {
+        // Handle the error
+        exit(EXIT_FAILURE);
+    }
+
+    json_t *new_object = json_pack("{s:s, s:s, s:s}", "username", username, "password", password, "email", email);
+    add_json_object(root, new_object);
+    if (write_json_to_file("credentials.json", root))
+    {
+        printf("JSON data written to file successfully.\n");
+    }
+    else
+    {
+        fprintf(stderr, "Error writing JSON data to file.\n");
+    }
+
+    json_decref(root);
+
+    char *folderLocation;
+    sprintf(folderLocation, "%s/%s", "./drive", username);
+    mkdir(folderLocation, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     gtk_label_set_text(GTK_LABEL(statusLabel), "Registration successful!");
 }
 

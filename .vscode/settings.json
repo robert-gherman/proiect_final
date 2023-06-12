@@ -41,6 +41,7 @@
     "unistd.h": "c",
     "client.h": "c",
     "gtk.h": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "jansson.h": "c"
   }
 }
