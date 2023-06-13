@@ -17,13 +17,13 @@ GtkWidget *listView; // New list view widget
 
 char *message;
 
-typedef struct FileData {
+typedef struct FileData
+{
     char name[256];
     char owner[256];
     char dateCreated[256];
     char size[256];
 } FileData;
-
 
 json_t *load_json_from_file(const char *filename)
 {
@@ -104,7 +104,8 @@ int write_json_to_file(const char *filename, json_t *root)
     return success == 0;
 }
 
-void addToList(const char *item, const char *owner, const char *dateCreated, const char *size) {
+void addToList(const char *item, const char *owner, const char *dateCreated, const char *size)
+{
     GtkListStore *store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(listView)));
 
     GtkTreeIter iter;
@@ -205,13 +206,14 @@ void copyFileCallback(GtkWidget *widget, gpointer data)
 void deleteFileCallback(GtkWidget *widget, gpointer data)
 {
     // Check if a file is selected
-    if (selectedFileName == NULL) {
+    if (selectedFileName == NULL)
+    {
         printf("No file selected.\n");
         return;
     }
 
     // Create the file path
-    char* filePath = g_strdup_printf("./drive/%s", selectedFileName);
+    char *filePath = g_strdup_printf("./drive/%s", selectedFileName);
 
     // Delete the selected file
     if (remove(filePath) == 0)
@@ -242,9 +244,11 @@ void createPopupMenu()
 // Callback function for the popup menu
 gboolean popupMenuCallback(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
-    if (event->type == GDK_BUTTON_PRESS) {
+    if (event->type == GDK_BUTTON_PRESS)
+    {
         GdkEventButton *buttonEvent = (GdkEventButton *)event;
-        if (buttonEvent->button == GDK_BUTTON_SECONDARY) {
+        if (buttonEvent->button == GDK_BUTTON_SECONDARY)
+        {
             // Show the popup menu at the pointer position
             gtk_menu_popup(GTK_MENU(popupMenu), NULL, NULL, NULL, NULL, buttonEvent->button, buttonEvent->time);
             return TRUE;
@@ -258,7 +262,8 @@ void selectionChanged(GtkTreeSelection *selection, gpointer data)
 {
     GtkTreeIter iter;
     GtkTreeModel *model;
-    if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+    if (gtk_tree_selection_get_selected(selection, &model, &iter))
+    {
         gchar *item;
         gtk_tree_model_get(model, &iter, 0, &item, -1);
         g_print("Selected File: %s\n", item);
@@ -279,7 +284,6 @@ void createMainApplicationWindow()
     gtk_window_set_title(GTK_WINDOW(mainWindow), "Drive Application");
     gtk_window_set_default_size(GTK_WINDOW(mainWindow), 800, 600);
 
-    
     GtkListStore *store = gtk_list_store_new(4, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
 
     listView = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
@@ -315,7 +319,6 @@ void createMainApplicationWindow()
     GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(listView));
     g_signal_connect(G_OBJECT(selection), "changed", G_CALLBACK(selectionChanged), NULL);
 
-    
     // Set the right-click popup menu callback
     g_signal_connect(G_OBJECT(listView), "button-press-event", G_CALLBACK(popupMenuCallback), NULL);
 
@@ -375,14 +378,13 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
             send_message(sock, username);
 
             receive_message(sock);
+
             // Open your main application window here
             createMainApplicationWindow();
 
             struct dirent *entry;
 
-            char *drive;
-            sprintf(drive, "%s/%s", "./drive", username);
-            DIR *dir = opendir(drive);
+            DIR *dir = opendir("./drive");
             if (dir == NULL)
             {
                 perror("opendir");
@@ -399,14 +401,12 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
                     struct stat fileStat;
                     if (stat(filePath, &fileStat) == 0)
                     {
-                        
+
                         char dateCreated[256] = "Unknown";
                         char size[256] = "Unknown";
 
                         // Extract owner information
                         struct passwd *pw = getpwuid(fileStat.st_uid);
-                        
-                            
 
                         // Extract date created information
                         struct tm *t = localtime(&fileStat.st_ctime);
@@ -419,6 +419,7 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
                     }
                 }
             }
+
             closedir(dir);
 
             // Get the selection object for the list view
