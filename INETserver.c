@@ -1,15 +1,22 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <pthread.h>
+#include <stdio.h>      //  pentru input/output
+#include <stdlib.h>     //  pentru functii generale
+#include <string.h>     //  pentru functii cu string-uri
+#include <sys/socket.h> //  pentru comunicare prin socket
+#include <netinet/in.h> //  pentru adrese IP
+#include <arpa/inet.h>  //  pentru convertirea adresei IP
+#include <unistd.h>     //  pentru functii de sistem
+#include <time.h>       //  pentru functii cu timp
+#include <pwd.h>        //  pentru informatii despre utilizatori
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <dirent.h>
+#include <pthread.h>
 #include <jansson.h>
 
 #define MAX_CLIENTS 2
 #define BUFFER_SIZE 1024
-#define PORT 9999
+#define PORT 2021
 
 // Structure to hold client information
 typedef struct
@@ -81,6 +88,22 @@ int verify_credentials(json_t *root, const char *username, const char *password)
     return 0; // Credentials not found
 }
 
+// Write JSON to file
+int write_json_to_file(const char *filename, json_t *root)
+{
+    FILE *file = fopen(filename, "w");
+    if (!file)
+    {
+        fprintf(stderr, "Error opening file for writing\n");
+        return 0;
+    }
+
+    int success = json_dumpf(root, file, JSON_INDENT(4));
+    fclose(file);
+
+    return success == 0;
+}
+
 // Function to handle communication with a client
 void *handle_client(void *arg)
 {
@@ -92,20 +115,108 @@ void *handle_client(void *arg)
     ssize_t num_bytes;
 
     // Read client messages until 'quit' is received
-    while ((num_bytes = recv(client_fd, buffer, BUFFER_SIZE - 1, 0)) > 0) {
+    while ((num_bytes = recv(client_fd, buffer, BUFFER_SIZE - 1, 0)) > 0)
+    {
         buffer[num_bytes] = '\0';
         printf("Received from client %s:%d: %s\n", inet_ntoa(client_addr.sin_addr),
                ntohs(client_addr.sin_port), buffer);
 
-        // Check if the client wants to quit
-        if (strcmp(buffer, "quit") == 0) {
-            break;
+        // First call to strtok
+        char *token = strtok(buffer, ":");
+        printf("%s\n", token);
+        if (strcmp(token, "register") == 0)
+        {
+            char *username;
+            char *email;
+            char *password;
+            // Subsequent calls to strtok
+            while (token != NULL)
+            {
+                if (strcmp(token, "username") == 0)
+                {
+                    token = strtok(NULL, ":");
+                    printf("%s\n", token);
+                    username = token;
+                }
+                if (strcmp(token, "password") == 0)
+                {
+                    token = strtok(NULL, ":");
+                    printf("%s\n", token);
+                    password = token;
+                }
+                if (strcmp(token, "email") == 0)
+                {
+                    token = strtok(NULL, ":");
+                    printf("%s\n", token);
+                    email = token;
+                }
+                token = strtok(NULL, ":");
+                // printf("Token: %s\n", token);
+            }
+
+            json_t *root = load_json_from_file("credentials.json");
+            if (!root)
+            {
+                // Handle the error
+                exit(EXIT_FAILURE);
+            }
+
+            json_t *new_object = json_pack("{s:s, s:s, s:s}", "username", username, "password", password, "email", email);
+            add_json_object(root, new_object);
+            if (write_json_to_file("credentials.json", root))
+            {
+                printf("JSON data written to file successfully.\n");
+            }
+            else
+            {
+                fprintf(stderr, "Error writing JSON data to file.\n");
+            }
+
+            json_decref(root);
+
+            char dir[256];
+            sprintf(dir, "%s/%s", "./drive", username);
+            mkdir(dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+            send(client_fd, "registered", strlen("registered"), 0);
         }
 
-        // Echo back the received message
-        send(client_fd, buffer, strlen(buffer), 0);
-    }
+        if (strcmp(token, "download") == 0)
+        {
+            token = strtok(NULL, ":");
+            char *username = token;
+            printf("%s\n", token);
 
+            token = strtok(NULL, ":");
+            printf("%s\n", token);
+
+            char dir[1024];
+            sprintf(dir, "drive/%s/%s", username, token);
+            // Open file
+            FILE *file = fopen(dir, "rb");
+            if (file == NULL)
+            {
+                perror("Failed to open file");
+                exit(EXIT_FAILURE);
+            }
+
+            // Read and send file contents in chunks
+            ssize_t bytes_read;
+            while ((bytes_read = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0)
+            {
+                ssize_t bytes_sent = send(client_fd, buffer, bytes_read, 0);
+                printf("%s\n", buffer);
+                if (bytes_sent == -1)
+                {
+                    perror("Failed to send data");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            // Close file
+            fclose(file);
+        }
+    }
 
     // Close the client socket
     close(client_fd);

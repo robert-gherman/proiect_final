@@ -42,6 +42,14 @@
     "client.h": "c",
     "gtk.h": "c",
     "stdio.h": "c",
-    "jansson.h": "c"
+    "jansson.h": "c",
+    "dirent.h": "c",
+    "socket.h": "c",
+    "in.h": "c",
+    "stdlib.h": "c",
+    "inet.h": "c",
+    "types.h": "c",
+    "pthread.h": "c",
+    "stat.h": "c"
   }
 }

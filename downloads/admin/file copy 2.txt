@@ -14,9 +14,7 @@
 #include <dirent.h>
 #include <pthread.h>
 #include <jansson.h>
-
-// #include "INETclient.h"
-#include "UNIXclient.h"
+#include "client.h"
 
 GtkWidget *grid;
 GtkWidget *usernameEntry;
@@ -168,12 +166,52 @@ gchar *selectedFileName = NULL;
 // Callback function for the copy menu item
 void copyFileCallback(GtkWidget *widget, gpointer data)
 {
-    char message[1024];
+    // Create the source and destination file paths
+    gchar *srcPath = g_strdup_printf("./drive/%s", selectedFileName);
+    gchar *dstPath = g_strdup_printf("./copied_drive/%s", selectedFileName);
 
-    snprintf(message, sizeof(message), "download:%s:%s", uname, selectedFileName);
-    send_message(sock, message);
-    receive_file(sock, uname, selectedFileName);
+    FILE *srcFile = fopen(srcPath, "rb");
+    if (srcFile == NULL)
+    {
+        g_print("Error opening source file for reading.\n");
+        g_free(srcPath);
+        g_free(dstPath);
+        return;
+    }
+
+    FILE *dstFile = fopen(dstPath, "wb");
+    if (dstFile == NULL)
+    {
+        g_print("Error opening destination file for writing.\n");
+        fclose(srcFile);
+        g_free(srcPath);
+        g_free(dstPath);
+        return;
+    }
+
+    char buffer[1024];
+    size_t bytesRead;
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), srcFile)) > 0)
+    {
+        size_t bytesWritten = fwrite(buffer, 1, bytesRead, dstFile);
+        if (bytesWritten < bytesRead)
+        {
+            g_print("Error writing to destination file.\n");
+            fclose(srcFile);
+            fclose(dstFile);
+            g_free(srcPath);
+            g_free(dstPath);
+            return;
+        }
+    }
+
+    fclose(srcFile);
+    fclose(dstFile);
+    g_print("File '%s' copied to '%s'\n", srcPath, dstPath);
+    g_free(srcPath);
+    g_free(dstPath);
 }
+
 // Callback function for the delete menu item
 void deleteFileCallback(GtkWidget *widget, gpointer data)
 {
@@ -240,6 +278,11 @@ void selectionChanged(GtkTreeSelection *selection, gpointer data)
         gtk_tree_model_get(model, &iter, 0, &item, -1);
         g_print("Selected File: %s\n", item);
 
+        char message[1024];
+
+        snprintf(message, sizeof(message), "download:%s:%s", uname, item);
+        send_message(sock, message);
+        receive_file(sock, uname, item);
         // Store the selected file name
         if (selectedFileName != NULL)
             g_free(selectedFileName);
@@ -452,65 +495,3 @@ void createAccountButtonClicked(GtkWidget *button, gpointer data)
 
     GtkWidget *registerButton = gtk_button_new_with_label("Register");
     gtk_grid_attach(GTK_GRID(grid), registerButton, 0, 4, 2, 1);
-    g_object_set_data(G_OBJECT(registerButton), "email_entry", emailEntry);
-    g_object_set_data(G_OBJECT(registerButton), "password_entry", passwordEntry);
-    g_object_set_data(G_OBJECT(registerButton), "repassword_entry", rePasswordEntry);
-    g_signal_connect(G_OBJECT(registerButton), "clicked", G_CALLBACK(registerButtonClicked), NULL);
-
-    statusLabel = gtk_label_new("");
-    gtk_grid_attach(GTK_GRID(grid), statusLabel, 0, 5, 2, 1);
-
-    gtk_widget_show_all(grid);
-}
-
-int main(int argc, char *argv[])
-{
-    GtkWidget *window;
-
-    gtk_init(&argc, &argv);
-
-    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "Drive Application");
-    gtk_window_set_default_size(GTK_WINDOW(window), 250, 250);
-    gtk_container_set_border_width(GTK_CONTAINER(window), 10);
-
-    sock = connect_to_server();
-    if (sock == -1)
-    {
-        printf("Failed to connect to the server\n");
-        exit(EXIT_FAILURE);
-    }
-
-    grid = gtk_grid_new();
-    gtk_container_add(GTK_CONTAINER(window), grid);
-
-    GtkWidget *usernameLabel = gtk_label_new("Username:");
-    gtk_grid_attach(GTK_GRID(grid), usernameLabel, 0, 0, 1, 1);
-    usernameEntry = gtk_entry_new();
-    gtk_grid_attach(GTK_GRID(grid), usernameEntry, 1, 0, 1, 1);
-
-    GtkWidget *passwordLabel = gtk_label_new("Password:");
-    gtk_grid_attach(GTK_GRID(grid), passwordLabel, 0, 1, 1, 1);
-    passwordEntry = gtk_entry_new();
-    gtk_grid_attach(GTK_GRID(grid), passwordEntry, 1, 1, 1, 1);
-    gtk_entry_set_visibility(GTK_ENTRY(passwordEntry), FALSE);
-
-    GtkWidget *loginButton = gtk_button_new_with_label("Login");
-    gtk_grid_attach(GTK_GRID(grid), loginButton, 0, 2, 2, 1);
-    g_signal_connect(G_OBJECT(loginButton), "clicked", G_CALLBACK(loginButtonClicked), NULL);
-
-    GtkWidget *createAccountButton = gtk_button_new_with_label("Create Account");
-    gtk_grid_attach(GTK_GRID(grid), createAccountButton, 0, 3, 2, 1);
-    g_signal_connect(G_OBJECT(createAccountButton), "clicked", G_CALLBACK(createAccountButtonClicked), NULL);
-
-    statusLabel = gtk_label_new("");
-    gtk_grid_attach(GTK_GRID(grid), statusLabel, 0, 4, 2, 1);
-
-    gtk_widget_show_all(window);
-
-    g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-    wait(NULL);
-    gtk_main();
-
-    return 0;
-}
