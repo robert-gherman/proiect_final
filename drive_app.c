@@ -338,6 +338,11 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
             // Open your main application window here
             createMainApplicationWindow();
 
+            if(strcmp(uname,"admin")){
+
+                
+            }
+
             char drive[256];
             snprintf(drive, sizeof(drive), "./drive/%s", username);
             printf("%s\n", drive);

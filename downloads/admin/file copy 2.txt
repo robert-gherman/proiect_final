@@ -495,3 +495,65 @@ void createAccountButtonClicked(GtkWidget *button, gpointer data)
 
     GtkWidget *registerButton = gtk_button_new_with_label("Register");
     gtk_grid_attach(GTK_GRID(grid), registerButton, 0, 4, 2, 1);
+    g_object_set_data(G_OBJECT(registerButton), "email_entry", emailEntry);
+    g_object_set_data(G_OBJECT(registerButton), "password_entry", passwordEntry);
+    g_object_set_data(G_OBJECT(registerButton), "repassword_entry", rePasswordEntry);
+    g_signal_connect(G_OBJECT(registerButton), "clicked", G_CALLBACK(registerButtonClicked), NULL);
+
+    statusLabel = gtk_label_new("");
+    gtk_grid_attach(GTK_GRID(grid), statusLabel, 0, 5, 2, 1);
+
+    gtk_widget_show_all(grid);
+}
+
+int main(int argc, char *argv[])
+{
+    GtkWidget *window;
+
+    gtk_init(&argc, &argv);
+
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "Drive Application");
+    gtk_window_set_default_size(GTK_WINDOW(window), 250, 250);
+    gtk_container_set_border_width(GTK_CONTAINER(window), 10);
+
+    sock = connect_to_server();
+    if (sock == -1)
+    {
+        printf("Failed to connect to the server\n");
+        exit(EXIT_FAILURE);
+    }
+
+    grid = gtk_grid_new();
+    gtk_container_add(GTK_CONTAINER(window), grid);
+
+    GtkWidget *usernameLabel = gtk_label_new("Username:");
+    gtk_grid_attach(GTK_GRID(grid), usernameLabel, 0, 0, 1, 1);
+    usernameEntry = gtk_entry_new();
+    gtk_grid_attach(GTK_GRID(grid), usernameEntry, 1, 0, 1, 1);
+
+    GtkWidget *passwordLabel = gtk_label_new("Password:");
+    gtk_grid_attach(GTK_GRID(grid), passwordLabel, 0, 1, 1, 1);
+    passwordEntry = gtk_entry_new();
+    gtk_grid_attach(GTK_GRID(grid), passwordEntry, 1, 1, 1, 1);
+    gtk_entry_set_visibility(GTK_ENTRY(passwordEntry), FALSE);
+
+    GtkWidget *loginButton = gtk_button_new_with_label("Login");
+    gtk_grid_attach(GTK_GRID(grid), loginButton, 0, 2, 2, 1);
+    g_signal_connect(G_OBJECT(loginButton), "clicked", G_CALLBACK(loginButtonClicked), NULL);
+
+    GtkWidget *createAccountButton = gtk_button_new_with_label("Create Account");
+    gtk_grid_attach(GTK_GRID(grid), createAccountButton, 0, 3, 2, 1);
+    g_signal_connect(G_OBJECT(createAccountButton), "clicked", G_CALLBACK(createAccountButtonClicked), NULL);
+
+    statusLabel = gtk_label_new("");
+    gtk_grid_attach(GTK_GRID(grid), statusLabel, 0, 4, 2, 1);
+
+    gtk_widget_show_all(window);
+
+    g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    wait(NULL);
+    gtk_main();
+
+    return 0;
+}

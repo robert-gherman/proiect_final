@@ -5,7 +5,7 @@
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#define SERVER_IP "127.0.0.1"
+#define SERVER_IP "192.168.100.44"
 #define PORT 2022
 #define MAX_BUFFER_SIZE 8192
 
@@ -121,7 +121,6 @@ void receive_file(int sock, char *username, char *item)
     }
 
     // Receive and write file contents in chunks
-    char buffer[MAX_BUFFER_SIZE];
     ssize_t bytes_received, bytes_written;
     while ((bytes_received = recv(sock, buffer, sizeof(buffer), 0)) > 0) {
         bytes_written = fwrite(buffer, sizeof(char), bytes_received, file);

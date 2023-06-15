@@ -16,7 +16,7 @@
 
 #define MAX_CLIENTS 5
 #define BUFFER_SIZE 8192
-#define PORT 2022
+#define PORT 9999
 
 // Structure to hold client information
 typedef struct
@@ -256,6 +256,8 @@ void *handle_client(void *arg)
 
                 send(client_fd, "OK", strlen("OK"), 0);
             }
+            
+
         }
     }
 
