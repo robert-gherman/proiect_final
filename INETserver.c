@@ -14,9 +14,9 @@
 #include <pthread.h>
 #include <jansson.h>
 
-#define MAX_CLIENTS 5
+#define MAX_CLIENTS 2
 #define BUFFER_SIZE 8192
-#define PORT 9999
+#define PORT 8016
 
 // Structure to hold client information
 typedef struct
@@ -24,6 +24,22 @@ typedef struct
     int client_fd;
     struct sockaddr_in client_addr;
 } client_info_t;
+
+client_info_t clients[MAX_CLIENTS];
+int num_clients = 0;
+
+void remove_client(int client_socket)
+{
+    for (int i = 0; i < num_clients; i++)
+    {
+        if (clients[i].client_fd == client_socket)
+        {
+            memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(client_info_t));
+            num_clients--;
+            break;
+        }
+    }
+}
 
 json_t *load_json_from_file(const char *filename)
 {
@@ -124,6 +140,7 @@ void *handle_client(void *arg)
         // First call to strtok
         char *token = strtok(buffer, ":");
         printf("%s\n", token);
+        
         if (strcmp(token, "register") == 0)
         {
             char *username;
@@ -253,19 +270,79 @@ void *handle_client(void *arg)
 
             if (verify_credentials(root, username, password) == 1)
             {
-
-                send(client_fd, "OK", strlen("OK"), 0);
+                if (strcmp(username, "admin") == 0)
+                {
+                    printf("ADMIN\n");
+                    send(client_fd, "ADMIN", strlen("ADMIN"), 0);
+                }
+                else
+                {
+                    send(client_fd, "OK", strlen("OK"), 0);
+                }
             }
-            
-
+            else
+            {
+                send(client_fd, "NO", strlen("NO"), 0);
+            }
         }
+
+        // if (strcmp(token, "files") == 0)
+        // {
+            // printf("%s\n", token);
+            // token = strtok(NULL, ":");
+            // char *username = ":D";
+            // printf("%s\n", token);
+
+            // char drive[256];
+            // snprintf(drive, sizeof(drive), "./drive/%s", username);
+            // printf("%s\n", drive);
+            // DIR *dir = opendir(drive);
+            // if (dir == NULL)
+            // {
+            //     perror("opendir");
+            // }
+            // struct dirent *entry;
+            // char files[BUFFER_SIZE];
+            // while ((entry = readdir(dir)) != NULL)
+            // {
+            //     if (entry->d_type == DT_REG)
+            //     { // Check if it's a regular file
+                    // char filePath[256];
+                    // printf("%s\n", entry->d_name);
+                    // snprintf(files, sizeof(files), "%s:", entry->d_name);
+                    // snprintf(filePath, sizeof(filePath), "./%s/%s", drive, entry->d_name);
+                    // struct stat fileStat;
+                    // if (stat(filePath, &fileStat) == 0)
+                    // {
+
+                    //     char dateCreated[256] = "Unknown";
+                    //     char size[256] = "Unknown";
+
+                    //     // Extract owner information
+                    //     struct passwd *pw = getpwuid(fileStat.st_uid);
+
+                    //     // Extract date created information
+                    //     struct tm *t = localtime(&fileStat.st_ctime);
+                    //     strftime(dateCreated, sizeof(dateCreated), "%Y-%m-%d %H:%M:%S", t);
+
+                    //     // Extract size information
+                    //     snprintf(size, sizeof(size), "%lld bytes", (long long)fileStat.st_size);
+
+                    //     // addToList(entry->d_name, username, dateCreated, size);
+                    // }
+                // }
+            // }
+            // send(client_fd, username, strlen(username), 0);
+
+            // closedir(dir);
+        // }
     }
 
     // Close the client socket
     close(client_fd);
-    printf("Client %s:%d disconnected\n", inet_ntoa(client_addr.sin_addr),
-           ntohs(client_addr.sin_port));
-
+    printf("Client %s:%d disconnected\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    num_clients--;
+    printf("Connected clients: %d\n", num_clients);
     free(client);
     pthread_exit(NULL);
 }
@@ -316,15 +393,28 @@ int main()
             continue;
         }
 
+        // Check if maximum number of clients reached
+        if (num_clients >= MAX_CLIENTS)
+        {
+            printf("Maximum number of clients reached. Rejecting new connection.\n");
+            close(client_fd);
+            continue;
+        }
+
         printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr),
                ntohs(client_addr.sin_port));
 
-        // Create a new thread to handle the client
-        pthread_t tid;
-        client_info_t *client_info = (client_info_t *)malloc(sizeof(client_info_t));
+        // Create a new client_info structure and allocate memory
+        client_info_t *client_info = malloc(sizeof(client_info_t));
         client_info->client_fd = client_fd;
         client_info->client_addr = client_addr;
 
+        // Add client to the list
+        clients[num_clients] = *client_info;
+        num_clients++;
+        printf("Connected clients: %d\n", num_clients);
+        // Create a new thread to handle the client
+        pthread_t tid;
         if (pthread_create(&tid, NULL, handle_client, (void *)client_info) != 0)
         {
             perror("Failed to create thread");
@@ -336,7 +426,6 @@ int main()
         // Detach the thread so that it can clean up resources when it exits
         pthread_detach(tid);
     }
-
     // Close the server socket
     close(server_fd);
 
