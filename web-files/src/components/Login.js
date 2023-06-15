@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Login.css";
 import PropTypes from "prop-types";
+import ipAddress from '../config';
 
 async function loginUser(credentials) {
   try {
-    const response = await fetch("http://localhost:5000/api/login", {
+    const response = await fetch(`${ipAddress}/api/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

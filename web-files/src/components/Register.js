@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
+import ipAddress from '../config';
 import "../styles/Login.css";
 
 async function registerUser(credentials) {
-  return fetch("http://localhost:5000/api/register", {
+  return fetch(`${ipAddress}/api/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

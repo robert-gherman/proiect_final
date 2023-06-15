@@ -1,5 +1,6 @@
 import React from "react";
 import "../styles/AddFile.css";
+import ipAddress from '../config';
 
 function AddFile({ onFileAdded }) {
   const handleFileInputChange = (event) => {
@@ -15,7 +16,7 @@ function AddFile({ onFileAdded }) {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:5000/upload", {
+      const response = await fetch(`${ipAddress}/upload`, {
         method: "POST",
         body: formData,
       });

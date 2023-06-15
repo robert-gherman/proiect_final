@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import AddFile from "./AddFile";
 import SelectedFile from "./SelectedFile";
 import "../styles/FileWindow.css"
+import ipAddress from '../config';
 
 function FileWindow() {
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -14,7 +15,7 @@ function FileWindow() {
 
   const requestSelectedFileFromServer = async (file) => {
     try {
-      const response = await fetch("http://localhost:5000/getfile", {
+      const response = await fetch(`${ipAddress}//getfile`, {
         method: "POST",
         body: JSON.stringify({ filename: file.name }),
         headers: {
