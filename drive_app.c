@@ -15,8 +15,8 @@
 #include <pthread.h>
 #include <jansson.h>
 
-// #include "INETclient.h"
-#include "UNIXclient.h"
+#include "INETclient.h"
+// #include "UNIXclient.h"
 
 GtkWidget *grid;
 GtkWidget *usernameEntry;
@@ -317,18 +317,13 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
 
     GtkWidget *statusLabel = gtk_grid_get_child_at(GTK_GRID(grid), 0, 4);
 
-    printf("Username: %s\n", username);
-    printf("Password: %s\n", password);
-
-    json_t *root = load_json_from_file("credentials.json");
-    if (!root)
-    {
-        // Handle the error
-        exit(EXIT_FAILURE);
-    }
-    size_t array_length = get_json_array_length(root);
-
-    if (verify_credentials(root, username, password) == 1)
+    char message[1024];
+    snprintf(message, sizeof(message), "login:username:%s:password:%s", username, password);
+    send_message(sock, message);
+    const char *response;
+    response = receive_message(sock);
+    printf("%s\n", response);
+    if (strcmp(response, "OK") == 0)
     {
         gtk_label_set_text(GTK_LABEL(statusLabel), "Login successful!");
         pid_t pid1_A = fork(); // cream primul proces
@@ -393,7 +388,11 @@ void loginButtonClicked(GtkWidget *button, gpointer data)
     else
     {
         gtk_label_set_text(GTK_LABEL(statusLabel), "Invalid username or password");
+        free(response);
+        response = NULL;
     }
+    free(response);
+    response = NULL;
 }
 
 void registerButtonClicked(GtkWidget *button, gpointer data)

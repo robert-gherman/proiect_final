@@ -7,8 +7,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-#define SOCKET_PATH "/tmp/socket2"
-#define MAX_BUFFER_SIZE 1024
+#define SOCKET_PATH "/tmp/socket"
+#define MAX_BUFFER_SIZE 8192
 
 int connect_to_server()
 {
@@ -41,11 +41,18 @@ void send_message(int sock, const char *message)
     printf("Message sent to server: %s\n", message);
 }
 
-char *receive_message(int sock)
-{
-    char buffer[MAX_BUFFER_SIZE] = {0};
-    int valread = read(sock, buffer, sizeof(buffer));
+char* receive_message(int sock) {
+    char* buffer = (char*)malloc(MAX_BUFFER_SIZE * sizeof(char));
+    if (buffer == NULL) {
+        perror("Memory allocation failed");
+        exit(1);
+    }
+
+    memset(buffer, 0, MAX_BUFFER_SIZE); // Clear the buffer
+
+    int valread = read(sock, buffer, MAX_BUFFER_SIZE - 1);
     printf("Received message from server: %s\n", buffer);
+
     return buffer;
 }
 

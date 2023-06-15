@@ -6,8 +6,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #define SERVER_IP "127.0.0.1"
-#define PORT 2021
-#define MAX_BUFFER_SIZE 1024
+#define PORT 2022
+#define MAX_BUFFER_SIZE 8192
 
 int connect_to_server()
 {
@@ -49,16 +49,25 @@ void send_message(int sock, const char *message)
 
 char *receive_message(int sock)
 {
-    char buffer[MAX_BUFFER_SIZE] = {0};
-    int valread = read(sock, buffer, sizeof(buffer));
+    char *buffer = (char *)malloc(MAX_BUFFER_SIZE * sizeof(char));
+    if (buffer == NULL)
+    {
+        perror("Memory allocation failed");
+        exit(1);
+    }
+
+    memset(buffer, 0, MAX_BUFFER_SIZE); // Clear the buffer
+
+    int valread = read(sock, buffer, MAX_BUFFER_SIZE - 1);
     printf("Received message from server: %s\n", buffer);
+
     return buffer;
 }
 
-char *receive_file(int sock, char *username, char *item)
+void receive_file(int sock, char *username, char *item)
 {
     FILE *file;
-    char buffer[MAX_BUFFER_SIZE];
+    char buffer[MAX_BUFFER_SIZE] = {0};
 
     // Check if the directory already exists
     struct stat st;
@@ -112,18 +121,22 @@ char *receive_file(int sock, char *username, char *item)
     }
 
     // Receive and write file contents in chunks
-    ssize_t bytes_received;
-    while ((bytes_received = recv(sock, buffer, MAX_BUFFER_SIZE, 0)) > 0)
-    {
-        ssize_t bytes_written = fwrite(buffer, sizeof(char), bytes_received, file);
-        printf("%s\n", buffer);
-        if (bytes_written < bytes_received)
-        {
-            perror("Failed to write to file");
-            exit(EXIT_FAILURE);
-        }
+    char buffer[MAX_BUFFER_SIZE];
+    ssize_t bytes_received, bytes_written;
+    while ((bytes_received = recv(sock, buffer, sizeof(buffer), 0)) > 0) {
+        bytes_written = fwrite(buffer, sizeof(char), bytes_received, file);
     }
-    printf("File received successfully.\n");
+
+    // Check if there was an error while receiving the file
+    if (bytes_received < 0) {
+        perror("Error receiving file");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
     // Close file
     fclose(file);
+
+    printf("File received successfully.\n");
+    exit(EXIT_SUCCESS);
 }

@@ -14,9 +14,9 @@
 #include <pthread.h>
 #include <jansson.h>
 
-#define MAX_CLIENTS 2
-#define BUFFER_SIZE 1024
-#define PORT 2021
+#define MAX_CLIENTS 5
+#define BUFFER_SIZE 8192
+#define PORT 2022
 
 // Structure to hold client information
 typedef struct
@@ -215,6 +215,47 @@ void *handle_client(void *arg)
 
             // Close file
             fclose(file);
+        }
+
+        if (strcmp(token, "login") == 0)
+        {
+            token = strtok(NULL, ":");
+
+            char *username;
+            char *password;
+
+            // Subsequent calls to strtok
+            while (token != NULL)
+            {
+                if (strcmp(token, "username") == 0)
+                {
+                    token = strtok(NULL, ":");
+                    printf("%s\n", token);
+                    username = token;
+                }
+                if (strcmp(token, "password") == 0)
+                {
+                    token = strtok(NULL, ":");
+                    printf("%s\n", token);
+                    password = token;
+                }
+
+                token = strtok(NULL, ":");
+                // printf("Token: %s\n", token);
+            }
+
+            json_t *root = load_json_from_file("credentials.json");
+            if (!root)
+            {
+                // Handle the error
+                exit(EXIT_FAILURE);
+            }
+
+            if (verify_credentials(root, username, password) == 1)
+            {
+
+                send(client_fd, "OK", strlen("OK"), 0);
+            }
         }
     }
 
