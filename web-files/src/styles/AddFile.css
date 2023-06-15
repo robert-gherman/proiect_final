@@ -1,0 +1,23 @@
+.main-button {
+    width: 120px;
+    height: 50px;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    padding: 8px;
+    margin: 10px;
+    gap: 4px;
+    background-color: #053bee;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    border-bottom: 3px solid #061a5c;
+    transition: 0.2s ease-in-out all;
+}
+
+.main-button:hover {
+    transform: translateY(-4px);
+    background-color: #061a5c;
+}

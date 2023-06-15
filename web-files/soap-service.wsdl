@@ -1,0 +1,99 @@
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:tns="urn:examples:mysoap"
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+  targetNamespace="urn:examples:mysoap">
+
+  <types>
+    <schema targetNamespace="urn:examples:mysoap">
+      <element name="login">
+        <complexType>
+          <sequence>
+            <element name="username" type="string"/>
+            <element name="password" type="string"/>
+          </sequence>
+        </complexType>
+      </element>
+      <element name="loginResponse">
+        <complexType>
+          <sequence>
+            <element name="success" type="boolean"/>
+            <element name="message" type="string"/>
+          </sequence>
+        </complexType>
+      </element>
+      
+      <element name="register">
+        <complexType>
+          <sequence>
+            <element name="username" type="string"/>
+            <element name="password" type="string"/>
+          </sequence>
+        </complexType>
+      </element>
+      <element name="registerResponse">
+        <complexType>
+          <sequence>
+            <element name="success" type="boolean"/>
+            <element name="message" type="string"/>
+          </sequence>
+        </complexType>
+      </element>
+    </schema>
+  </types>
+
+  <message name="loginRequest">
+    <part name="parameters" element="tns:login"/>
+  </message>
+  <message name="loginResponse">
+    <part name="parameters" element="tns:loginResponse"/>
+  </message>
+  
+  <message name="registerRequest">
+    <part name="parameters" element="tns:register"/>
+  </message>
+  <message name="registerResponse">
+    <part name="parameters" element="tns:registerResponse"/>
+  </message>
+
+  <portType name="MyPortType">
+    <operation name="login">
+      <input message="tns:loginRequest"/>
+      <output message="tns:loginResponse"/>
+    </operation>
+    
+    <operation name="register">
+      <input message="tns:registerRequest"/>
+      <output message="tns:registerResponse"/>
+    </operation>
+  </portType>
+
+  <binding name="MyBinding" type="tns:MyPortType">
+  <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+  <operation name="login">
+    <soap:operation soapAction="urn:examples:mysoap:login"/>
+    <input>
+      <soap:body use="literal" namespace="urn:examples:mysoap"/>
+    </input>
+    <output>
+      <soap:body use="literal" namespace="urn:examples:mysoap"/>
+    </output>
+  </operation>
+
+  <operation name="register">
+    <soap:operation soapAction="urn:examples:mysoap:register"/>
+    <input>
+      <soap:body use="literal" namespace="urn:examples:mysoap"/>
+    </input>
+    <output>
+      <soap:body use="literal" namespace="urn:examples:mysoap"/>
+    </output>
+  </operation>
+</binding>
+
+  <service name="MyService">
+    <port name="MyPort" binding="tns:MyBinding">
+      <soap:address location="http://localhost:5001/soap-endpoint"/>
+    </port>
+  </service>
+</definitions>

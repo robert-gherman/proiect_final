@@ -1,0 +1,72 @@
+.login-page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: sans-serif;
+  }
+  
+  .form {
+    background-color: white;
+    border-radius: 10px;
+    padding: 40px;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 20px 13px rgb(0 0 0 / 0.03))
+      drop-shadow(0 8px 5px rgb(0 0 0 / 0.08));
+  }
+  
+  .label {
+    color: rgb(55 65 81);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: bold;
+  }
+  
+  .input {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    appearance: none;
+    border: none;
+    color: gray;
+    outline: none;
+    width: 100%;
+    margin: 12px 0;
+  }
+  
+  .buttons-container {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+    justify-content: space-between;
+  }
+  
+  .link {
+    color: rgb(29 78 216);
+    font-weight: bold;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .link:hover {
+    color: rgb(30 64 175);
+  }
+  
+  .submit {
+    text-align: center;
+    background-color: rgb(59 130 246);
+    color: white;
+    padding: 8px 12px;
+    outline: none;
+    font-weight: bold;
+    font-size: 18px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+  }
+  
+  .submit:hover {
+    background-color: rgb(29 78 216);
+  }
+  

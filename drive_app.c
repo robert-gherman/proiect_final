@@ -149,57 +149,40 @@ int copyFile(const char *srcPath, const char *dstPath)
     return 1;
 }
 
+
+static void open_dialog(GtkWidget* button, gpointer window)
+{
+    GtkWidget *dialog;
+    g_print("Before dialog create\n");
+    dialog = gtk_file_chooser_dialog_new("Choose a file", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN, "_Open", GTK_RESPONSE_OK, "_Cancel", GTK_RESPONSE_CANCEL, NULL);
+    g_print("After dialog create\n");
+    gtk_widget_show_all(dialog);
+    gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), g_get_home_dir());
+    gint resp = gtk_dialog_run(GTK_DIALOG(dialog));
+    if (resp == GTK_RESPONSE_OK)
+        g_print("%s\n", gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
+    else
+        g_print("You pressed Cancel\n");
+    gtk_widget_destroy(dialog);
+}
+
 GtkWidget *listView;
 GtkWidget *popupMenu;
 
 gchar *selectedFileName = NULL;
+
 // Callback function for the copy menu item
 void copyFileCallback(GtkWidget *widget, gpointer data)
 {
-    // Create the source and destination file paths
-    gchar *srcPath = g_strdup_printf("./drive/%s", selectedFileName);
-    gchar *dstPath = g_strdup_printf("./copied_drive/%s", selectedFileName);
-
-    FILE *srcFile = fopen(srcPath, "rb");
-    if (srcFile == NULL)
+    g_print("Copy menu item clicked\n");
+    // Check if a file is selected
+    if (selectedFileName == NULL)
     {
-        g_print("Error opening source file for reading.\n");
-        g_free(srcPath);
-        g_free(dstPath);
+        printf("No file selected.\n");
         return;
     }
 
-    FILE *dstFile = fopen(dstPath, "wb");
-    if (dstFile == NULL)
-    {
-        g_print("Error opening destination file for writing.\n");
-        fclose(srcFile);
-        g_free(srcPath);
-        g_free(dstPath);
-        return;
-    }
-
-    char buffer[1024];
-    size_t bytesRead;
-    while ((bytesRead = fread(buffer, 1, sizeof(buffer), srcFile)) > 0)
-    {
-        size_t bytesWritten = fwrite(buffer, 1, bytesRead, dstFile);
-        if (bytesWritten < bytesRead)
-        {
-            g_print("Error writing to destination file.\n");
-            fclose(srcFile);
-            fclose(dstFile);
-            g_free(srcPath);
-            g_free(dstPath);
-            return;
-        }
-    }
-
-    fclose(srcFile);
-    fclose(dstFile);
-    g_print("File '%s' copied to '%s'\n", srcPath, dstPath);
-    g_free(srcPath);
-    g_free(dstPath);
+    open_dialog(widget, data);
 }
 
 // Callback function for the delete menu item
@@ -257,16 +240,23 @@ gboolean popupMenuCallback(GtkWidget *widget, GdkEvent *event, gpointer data)
     return FALSE;
 }
 
-// Callback function for the selection changed event
 void selectionChanged(GtkTreeSelection *selection, gpointer data)
 {
     GtkTreeIter iter;
     GtkTreeModel *model;
+
     if (gtk_tree_selection_get_selected(selection, &model, &iter))
     {
         gchar *item;
         gtk_tree_model_get(model, &iter, 0, &item, -1);
         g_print("Selected File: %s\n", item);
+
+        // Check if the selected file is the same as the previously selected file
+        if (selectedFileName != NULL && g_strcmp0(selectedFileName, item) == 0)
+        {
+            g_free(item);
+            return; // Exit early, as the selected file is the same
+        }
 
         // Store the selected file name
         if (selectedFileName != NULL)
@@ -327,6 +317,7 @@ void createMainApplicationWindow()
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledWindow), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
     gtk_container_add(GTK_CONTAINER(scrolledWindow), listView);
 
+    
     // Add the scrolled window to the main window
     gtk_container_add(GTK_CONTAINER(mainWindow), scrolledWindow);
 
