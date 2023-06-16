@@ -7,7 +7,7 @@
 #include <arpa/inet.h> // Biblioteca pentru operații de rețea la nivel de socket
 
 #define SERVER_IP "127.0.0.1"
-#define PORT 8016
+#define PORT 8035
 #define MAX_BUFFER_SIZE 8192
 
 // Funcție pentru conectarea la server

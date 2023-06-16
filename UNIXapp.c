@@ -168,15 +168,15 @@ void deleteFileCallback(GtkWidget *widget, gpointer data)
 
     g_free(filePath);
 }
-// Create the popup menu
+// Create the regular user popup menu
 void createPopupMenu()
 {
     popupMenu = gtk_menu_new();
 
-    // Copy menu item
-    GtkWidget *copyMenuItem = gtk_menu_item_new_with_label("Download");
-    g_signal_connect(G_OBJECT(copyMenuItem), "activate", G_CALLBACK(copyFileCallback), NULL);
-    gtk_menu_shell_append(GTK_MENU_SHELL(popupMenu), copyMenuItem);
+    // Download menu item
+    GtkWidget *downloadMenuItem = gtk_menu_item_new_with_label("Download");
+    g_signal_connect(G_OBJECT(downloadMenuItem), "activate", G_CALLBACK(copyFileCallback), NULL);
+    gtk_menu_shell_append(GTK_MENU_SHELL(popupMenu), downloadMenuItem);
 
     // Delete menu item
     GtkWidget *deleteMenuItem = gtk_menu_item_new_with_label("Delete");
@@ -186,33 +186,27 @@ void createPopupMenu()
     gtk_widget_show_all(popupMenu);
 }
 
-// Create the popup menu
+GtkWidget *popupMenu;      // Popup menu for the regular user
+GtkWidget *adminPopupMenu; // Popup menu for the admin user
+
+void deleteUserCallback() {}
+void disconnectCallback() {}
+void blockUserCallback() {}
+void stopProcessCallback() {}
+
+// Create the admin user popup menu
 void createAdminPopupMenu()
 {
-    popupMenu1 = gtk_menu_new();
-
-    // Copy menu item
-    GtkWidget *copyMenuItem = gtk_menu_item_new_with_label("Delete");
-    g_signal_connect(G_OBJECT(copyMenuItem), "activate", G_CALLBACK(copyFileCallback), NULL);
-    gtk_menu_shell_append(GTK_MENU_SHELL(popupMenu1), copyMenuItem);
+    adminPopupMenu = gtk_menu_new();
 
     // Delete menu item
-    GtkWidget *deleteMenuItem = gtk_menu_item_new_with_label("Disconnect");
-    g_signal_connect(G_OBJECT(deleteMenuItem), "activate", G_CALLBACK(deleteFileCallback), NULL);
-    gtk_menu_shell_append(GTK_MENU_SHELL(popupMenu1), deleteMenuItem);
+    GtkWidget *deleteMenuItem = gtk_menu_item_new_with_label("Delete");
+    g_signal_connect(G_OBJECT(deleteMenuItem), "activate", G_CALLBACK(deleteUserCallback), NULL);
+    gtk_menu_shell_append(GTK_MENU_SHELL(adminPopupMenu), deleteMenuItem);
 
-        // Delete menu item
-    GtkWidget *deleteMenuItem = gtk_menu_item_new_with_label("Block");
-    g_signal_connect(G_OBJECT(deleteMenuItem), "activate", G_CALLBACK(deleteFileCallback), NULL);
-    gtk_menu_shell_append(GTK_MENU_SHELL(popupMenu1), deleteMenuItem);
-
-        // Delete menu item
-    GtkWidget *deleteMenuItem = gtk_menu_item_new_with_label("Stop");
-    g_signal_connect(G_OBJECT(deleteMenuItem), "activate", G_CALLBACK(deleteFileCallback), NULL);
-    gtk_menu_shell_append(GTK_MENU_SHELL(popupMenu1), deleteMenuItem);
-
-    gtk_widget_show_all(popupMenu1);
+    gtk_widget_show_all(adminPopupMenu);
 }
+
 
 // Callback function for the popup menu
 gboolean popupMenuCallback(GtkWidget *widget, GdkEvent *event, gpointer data)
@@ -229,6 +223,23 @@ gboolean popupMenuCallback(GtkWidget *widget, GdkEvent *event, gpointer data)
     }
     return FALSE;
 }
+
+// Callback function for the popup menu
+gboolean popupAdminMenuCallback(GtkWidget *widget, GdkEvent *event, gpointer data)
+{
+    if (event->type == GDK_BUTTON_PRESS)
+    {
+        GdkEventButton *buttonEvent = (GdkEventButton *)event;
+        if (buttonEvent->button == GDK_BUTTON_SECONDARY)
+        {
+            // Show the popup menu at the pointer position
+            gtk_menu_popup(GTK_MENU(adminPopupMenu), NULL, NULL, NULL, NULL, buttonEvent->button, buttonEvent->time);
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 
 // Callback function for the selection changed event
 void selectionChanged(GtkTreeSelection *selection, gpointer data)
@@ -316,7 +327,7 @@ void createAdminApplicationWindow()
     gtk_window_set_default_size(GTK_WINDOW(adminWindow), 400, 300);
     g_signal_connect(adminWindow, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
-    GtkListStore *store = gtk_list_store_new(1, G_TYPE_STRING);  // Only 1 column is needed
+    GtkListStore *store = gtk_list_store_new(1, G_TYPE_STRING); // Only 1 column is needed
 
     listView1 = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
     g_object_unref(store);
@@ -336,12 +347,12 @@ void createAdminApplicationWindow()
     // Add the scrolled window to the main window
     gtk_container_add(GTK_CONTAINER(adminWindow), scrolledWindow);
 
-        // Create the tree selection and set the selection changed callback
+    // Create the tree selection and set the selection changed callback
     GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(listView1));
     g_signal_connect(G_OBJECT(selection), "changed", G_CALLBACK(selectionChanged), NULL);
 
     // Set the right-click popup menu callback
-    g_signal_connect(G_OBJECT(listView1), "button-press-event", G_CALLBACK(popupMenuCallback), NULL);
+    g_signal_connect(G_OBJECT(listView1), "button-press-event", G_CALLBACK(popupAdminMenuCallback), NULL);
 
     printUsers("credentials.json");
 

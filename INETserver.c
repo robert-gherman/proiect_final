@@ -16,11 +16,11 @@
 
 #define MAX_CLIENTS 2
 #define BUFFER_SIZE 8192
-#define PORT 8016
+#define PORT 8035
 
 // Structure to hold client information
 typedef struct
-{
+{   char* username;
     int client_fd;
     struct sockaddr_in client_addr;
 } client_info_t;
@@ -28,17 +28,25 @@ typedef struct
 client_info_t clients[MAX_CLIENTS];
 int num_clients = 0;
 
-void remove_client(int client_socket)
-{
-    for (int i = 0; i < num_clients; i++)
-    {
-        if (clients[i].client_fd == client_socket)
-        {
-            memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(client_info_t));
-            num_clients--;
+void disconnectClient(const char* username) {
+    int i;
+    for (i = 0; i < num_clients; i++) {
+        if (strcmp(clients[i].username, username) == 0) {
+            int clientSocket = clients[i].client_fd;
+            close(clientSocket);
+            printf("Client disconnected: %s (%s:%d)\n", username,
+                   inet_ntoa(clients[i].client_addr.sin_addr),
+                   ntohs(clients[i].client_addr.sin_port));
             break;
         }
     }
+
+    if (i < num_clients - 1) {
+        // Remove the client from the array by shifting the remaining clients
+        memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(client_info_t));
+    }
+
+    num_clients--;
 }
 
 json_t *load_json_from_file(const char *filename)
@@ -120,12 +128,53 @@ int write_json_to_file(const char *filename, json_t *root)
     return success == 0;
 }
 
+int deleteJsonObjectFromArray(json_t *array, const char *username)
+{
+    size_t index;
+    json_t *value;
+
+    json_array_foreach(array, index, value)
+    {
+        const char *jsonUsername = json_string_value(json_object_get(value, "username"));
+        if (jsonUsername && strcmp(jsonUsername, username) == 0)
+        {
+            json_array_remove(array, index);
+            return 1; // Object deleted successfully
+        }
+    }
+
+    return 0; // Object not found
+}
+
+void deleteFile(const char *directory, const char *filename)
+{
+    // Create the full file path by concatenating the directory and filename
+    size_t directoryLen = strlen(directory);
+    size_t filenameLen = strlen(filename);
+    size_t pathLen = directoryLen + 1 + filenameLen + 1; // +1 for directory separator, +1 for null terminator
+    char *filePath = (char *)malloc(pathLen);
+    snprintf(filePath, pathLen, "%s/%s", directory, filename);
+
+    // Delete the file
+    if (remove(filePath) == 0)
+    {
+        printf("File '%s' deleted successfully.\n", filePath);
+    }
+    else
+    {
+        printf("Error deleting file '%s'.\n", filePath);
+    }
+
+    // Cleanup
+    free(filePath);
+}
 // Function to handle communication with a client
 void *handle_client(void *arg)
 {
     client_info_t *client = (client_info_t *)arg;
     int client_fd = client->client_fd;
     struct sockaddr_in client_addr = client->client_addr;
+    char* username = client->username; 
 
     char buffer[BUFFER_SIZE];
     ssize_t num_bytes;
@@ -140,7 +189,76 @@ void *handle_client(void *arg)
         // First call to strtok
         char *token = strtok(buffer, ":");
         printf("%s\n", token);
-        
+
+        if (strcmp(token, "disconnect") == 0)
+        {
+            token = strtok(NULL, ":");
+            printf("%s\n", token);
+            disconnectClient(token);
+            send(client_fd, "DISCONNECTED", strlen("DISCONNECTED"), 0);
+        }
+
+        if (strcmp(token, "deleteFILE") == 0)
+        {
+            token = strtok(NULL, ":");
+            printf("%s\n", token);
+            char username[BUFFER_SIZE] = "";
+            char filename[BUFFER_SIZE] = "";
+            while (token != NULL)
+            {
+                if (strcmp(token, "username") == 0)
+                {
+                    token = strtok(NULL, ":");
+                    printf("%s\n", token);
+                    strcpy(username, token);
+                    token = strtok(NULL, ":");
+                    printf("%s\n", token);
+                    strcpy(filename, token);
+                }
+                token = strtok(NULL, ":");
+            }
+            char filePath[BUFFER_SIZE];
+            sprintf(filePath, "drive/%s", username);
+            deleteFile(filePath, filename);
+            send(client_fd, "DELETED", strlen("DELETED"), 0);
+        }
+
+        if (strcmp(token, "deleteUSER") == 0)
+        {
+            token = strtok(NULL, ":");
+            printf("%s\n", token);
+            // Read JSON array from file
+            FILE *file = fopen("credentials.json", "r");
+            json_error_t error;
+            json_t *root = json_loadf(file, 0, &error);
+            fclose(file);
+
+            if (!root)
+            {
+                fprintf(stderr, "Error reading JSON file: %s\n", error.text);
+            }
+
+            // Delete JSON object with username "qwe"
+            int deleted = deleteJsonObjectFromArray(root, token);
+
+            if (deleted)
+            {
+                // Write modified JSON array back to file
+                FILE *outfile = fopen("credentials.json", "w");
+                json_dumpf(root, outfile, JSON_INDENT(4));
+                fclose(outfile);
+                printf("Object with username \"%s\" deleted successfully.\n", token);
+            }
+            else
+            {
+                printf("Object with username \"%s\" not found.\n", token);
+            }
+
+            // Cleanup
+            json_decref(root);
+            send(client_fd, "DELETED", strlen("DELETED"), 0);
+        }
+
         if (strcmp(token, "register") == 0)
         {
             char *username;
@@ -285,57 +403,6 @@ void *handle_client(void *arg)
                 send(client_fd, "NO", strlen("NO"), 0);
             }
         }
-
-        // if (strcmp(token, "files") == 0)
-        // {
-            // printf("%s\n", token);
-            // token = strtok(NULL, ":");
-            // char *username = ":D";
-            // printf("%s\n", token);
-
-            // char drive[256];
-            // snprintf(drive, sizeof(drive), "./drive/%s", username);
-            // printf("%s\n", drive);
-            // DIR *dir = opendir(drive);
-            // if (dir == NULL)
-            // {
-            //     perror("opendir");
-            // }
-            // struct dirent *entry;
-            // char files[BUFFER_SIZE];
-            // while ((entry = readdir(dir)) != NULL)
-            // {
-            //     if (entry->d_type == DT_REG)
-            //     { // Check if it's a regular file
-                    // char filePath[256];
-                    // printf("%s\n", entry->d_name);
-                    // snprintf(files, sizeof(files), "%s:", entry->d_name);
-                    // snprintf(filePath, sizeof(filePath), "./%s/%s", drive, entry->d_name);
-                    // struct stat fileStat;
-                    // if (stat(filePath, &fileStat) == 0)
-                    // {
-
-                    //     char dateCreated[256] = "Unknown";
-                    //     char size[256] = "Unknown";
-
-                    //     // Extract owner information
-                    //     struct passwd *pw = getpwuid(fileStat.st_uid);
-
-                    //     // Extract date created information
-                    //     struct tm *t = localtime(&fileStat.st_ctime);
-                    //     strftime(dateCreated, sizeof(dateCreated), "%Y-%m-%d %H:%M:%S", t);
-
-                    //     // Extract size information
-                    //     snprintf(size, sizeof(size), "%lld bytes", (long long)fileStat.st_size);
-
-                    //     // addToList(entry->d_name, username, dateCreated, size);
-                    // }
-                // }
-            // }
-            // send(client_fd, username, strlen(username), 0);
-
-            // closedir(dir);
-        // }
     }
 
     // Close the client socket
@@ -408,6 +475,7 @@ int main()
         client_info_t *client_info = malloc(sizeof(client_info_t));
         client_info->client_fd = client_fd;
         client_info->client_addr = client_addr;
+        // client_info->username = username;
 
         // Add client to the list
         clients[num_clients] = *client_info;
