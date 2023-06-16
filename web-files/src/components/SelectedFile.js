@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 function SelectedFile({ file }) {
   const [isSelected, setIsSelected] = useState(false);
-    console.log(file)
+    
   const handleFileClick = () => {
     setIsSelected(!isSelected);
   };

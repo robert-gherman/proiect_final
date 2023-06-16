@@ -5,7 +5,6 @@ import ipAddress from '../config';
 function AddFile({ onFileAdded }) {
   const handleFileInputChange = (event) => {
     const file = event.target.files[0];
-    // Pass the selected file to the parent component
     onFileAdded(file);
     // Send the file to the server
     sendFileToServer(file);
@@ -14,6 +13,8 @@ function AddFile({ onFileAdded }) {
   const sendFileToServer = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
+
+    console.log("Data being sent to the server:", file); // Log the data being sent
 
     try {
       const response = await fetch(`${ipAddress}/upload`, {

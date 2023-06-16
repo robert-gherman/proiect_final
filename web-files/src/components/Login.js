@@ -14,16 +14,16 @@ async function loginUser(credentials) {
       body: JSON.stringify(credentials),
     });
 
-    console.log(response); // Log the response object
+    
 
     if (!response.ok) {
       throw new Error("Login failed");
     }
 
     const data = await response.text();
-    console.log("Response:", data); // Log the response data
+    // console.log("Response:", data); // Log the response data
 
-    console.log("Character at position 31:", data.charCodeAt(31)); // Log the character at position 31
+    
 
     return JSON.parse(data);
   } catch (error) {
@@ -44,7 +44,7 @@ export default function Login() {
         username,
         password,
       });
-      console.log("DA");
+      
       if (response && response.message === "Login successful!") {
         console.log("Login successful.");
         navigate("/home");
