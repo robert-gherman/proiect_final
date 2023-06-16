@@ -50,6 +50,7 @@
     "inet.h": "c",
     "types.h": "c",
     "pthread.h": "c",
-    "stat.h": "c"
+    "stat.h": "c",
+    "pwd.h": "c"
   }
 }

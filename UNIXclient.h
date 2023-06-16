@@ -7,7 +7,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-#define SOCKET_PATH "/tmp/socket"
+#define SOCKET_PATH "/tmp/socket9"
 #define MAX_BUFFER_SIZE 8192
 
 int connect_to_server()

@@ -15,8 +15,8 @@
 #include <pthread.h>
 #include <jansson.h>
 
-#include "INETclient.h"
-// #include "UNIXclient.h"
+// #include "INETclient.h"
+#include "UNIXclient.h"
 
 GtkWidget *grid;
 GtkWidget *usernameEntry;

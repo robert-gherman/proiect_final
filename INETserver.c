@@ -16,7 +16,7 @@
 
 #define MAX_CLIENTS 2
 #define BUFFER_SIZE 8192
-#define PORT 8035
+#define PORT 8037
 
 // Structure to hold client information
 typedef struct
